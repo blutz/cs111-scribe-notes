@@ -55,7 +55,7 @@
 <ol>
     <li>
         <h4>Polling</h4>
-        <p>Use a file <code>/dev/power</code>. Read from it. If the file reads "!", power is low. If it reads "_" power is OK.</p>
+        <p>Use a file <code>/dev/power</code>. Read from it. If the file reads "!", power is low. If it reads " " (a space) power is OK.</p>
         <ul>
             <li>For every program that cares about power, and every loop that might execute for more than a few seconds, insert a check</li>
             <li>This is a pain to program, and can chew up CPU time</li>
@@ -200,6 +200,6 @@ void handle_int(int signal) {
     </ol>
     </p>
 <hr />
-<em>&copy; 2013 Jonathan Hao, Byron Lutz, David Voong, and Sam Warring</em>
+<em>&copy; 2013 Jonathan Hao, Byron Lutz, David Voong, and Sam Warring. Released under the <a href="http://www.gnu.org/licenses/gpl-3.0.html">GNU Public License version 3</a>.</em>
 </body>
 </html>
