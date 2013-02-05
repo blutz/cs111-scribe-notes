@@ -2,40 +2,98 @@
 <html>
 <head>
     <title>CS 111, Winter 2013 | Scribe notes | January 30, 2013</title>
+    <style type="text/css">
+    body {
+        margin: 30px 50px;
+        font: normal 12px "Helvetica Neue", helvetica, arial, sans-serif;
+    }
+    #authors {
+        margin: 0;
+        list-style: none;
+        padding: 0;
+    }
+    #authors li {
+        float: left;
+        border-right: 1px #ccc dotted;
+        padding: 0 5px;
+    }
+    #authors .last {
+        border: 0;
+    }
+    .clear {
+        clear: both;
+    }
+    </style>
 </head>
 <body>
 
 <h1>Scribe notes &bull; January 30, 2013</h1>
+<ul id="authors">
+    <li>Jonathan Hao</li>
+    <li>Byron Lutz</li>
+    <li>Sam Warring</li>
+    <li class="last">David Voong</li>
+    <div class="clear"></div>
+</ul>
 <h2>Interrupts &amp; Signals</h2>
 
 <h3>How to inform user processes of situation</h3>
-<p><strong>Example:</strong> Uninterruptable power supply connected with USB</p>
+<p><strong>Example:</strong> The computer is connected Uninterruptable power supply connected with USB.</p>
 <ol>
     <li>
         <h4>Use a file - Polling</h4>
         <ul>
             <li>Every program that cares abot power</li>
             <li>Every loop that might execute for more than a few seconds, insert a check</li>
-            <li>Pain to program, chew up CPU time</li>
+            <li>This is a pain to program, and can chew up CPU time</li>
         </ul>
     </li>
     <li>
         <h4>Signals</h4>
-        <p>With signals, the kernel "magically" inserts a check into the program.</p>
-    </li>
-</ol>
-
-<h3>Signals</h3>
-<ol>
-    <li>
-        <h4></h4>
+        <ul>
+            <li>With signals, the kernel "magically" inserts a check into the program.</li>
+            <li>Motivations for Signals
+                <ul>
+                    <li>Dealing with Uncooperative Processes</li>
+                    <li>Dealing with Broken Processes</li>
+                    <li>
+                </ul>
+            </li>
+        </ul>
     </li>
 </ol>
 
 <h2>Threads</h2>
+<ol>
+    <li>
+        <h4>Compared with Processes</h4>
+        <ul>
+            <li>Each process gets its own memory space, but threads share memory</li>
+            <li>Threads share file-descriptors</li>
+            <li>Threads <u>dont</u> share registers (including instruction pointer)</li>
+            <li>Threads <u>dont</u> share a stack</li>
+        </ul>
+    </li>
+    <li>
+        <h4>Important System Calls</h4>
+    </li>
+    <li>
+        <h4>Things a Thread Can Do</h4>
+    </li>
+    <li>
+        <h4>Types of Multithreading</h4>
+    </li>
+    <li>
+        <h4>Signals and Threading</h4>
+    </li>
+</ol>
 
 <h2>Scheduling</h2>
-
-
+    <em>This is the first of a two-lecture series. See the next week&rsquo;s lecture notes for more discussion of scheduling.</em>
+    <p>Machines have limited resources (CPU cores, memory, bus bandwidth, etc.). When dealing with CPU cores, the operating system needs a system to decide <strong>who goes first</strong>.</p>
+<h3>Policies</h3>
+    <p><strong>Policies are the high-level algorithm used by a scheduler.</strong></p>
+<h3>Mechanisms</h3>
+    <p><strong>Mechanisms are the low-level ways of <em>implementing</em> a scheduling policy.</strong></p>
 </body>
 </html>
