@@ -5,7 +5,7 @@
     <style type="text/css">
     body {
         margin: 30px 50px;
-        font: normal 12px "Helvetica Neue", helvetica, arial, sans-serif;
+        font: normal 14px/18px "Helvetica Neue", helvetica, arial, sans-serif;
     }
     #authors {
         margin: 0;
@@ -23,6 +23,9 @@
     .clear {
         clear: both;
     }
+    p, ul {
+        margin: 0 0 20px 0;
+    }
     </style>
 </head>
 <body>
@@ -36,7 +39,7 @@
 </ul>
 <div class="clear"></div>
 <h2>Interrupts &amp; Signals</h2>
-<p><strong>Motivating Example:</strong> The computer is connected via USB to an uninterruptible power supply (UPS). How should the kernel deal with running out of power? <img src="http://www.kevinscrate.com/blog/wp-content/uploads/2007/07/ups.jpg" alt="Uninterruptible power supply (UPS)" /></p>
+<p><strong>Motivating Example:</strong> The computer is connected via USB to an uninterruptible power supply (UPS). How should the kernel deal with running out of power? <img src="http://www.kevinscrate.com/blog/wp-content/uploads/2007/07/ups.jpg" alt="Uninterruptible power supply (UPS)" style="width:200px;float:right;margin-left:20px;" /></p>
 
 <p><strong>One solution:</strong> Take a snapshot of RAM, CPU registers and copy them to the disk. Then, shut off power. When power comes back on, reverse the process and restore everything as if the programs never noticed the power interruption.</p>
 <p>What&rsquo;s wrong with this?</p>
@@ -60,22 +63,36 @@
     </li>
     <li>
         <h4>Signals</h4>
+        <p><strong>Example:</strong> Press <kbd>^C</kbd> into a terminal to abort a process (this one takes a bunch of zeroes and throws them away).</p>
+        <pre>$ cat /dev/zero > /dev/null
+^C
+$</pre>
+        <p>The terminal driver informs the operating system of the <kbd>^C</kbd>. The operating system sends <code>SIGINT</code> to all processes with this terminal as the <em>controlling terminal</em></p>
+        
+        <p>With signals, the kernel "magically" inserts a check into the program.</p>
+        <h4>Motivations for Signals</h4>
         <ul>
-            <li>With signals, the kernel "magically" inserts a check into the program.</li>
-            <li><strong>Motivations for Signals</strong>
-                <ul>
-                    <li>Dealing with Uncooperative Processes</li>
-                    <li>Dealing with Broken Processes</li>
-                    <li>Dealing with I/O</li>
-                    <li>A child died</li>
-                    <li>User signals</li>
-                    <li>Controlling Terminal</li>
-                    <li>Killing</li>
-                </ul>
-            </li>
+            <li>Uncooperative processes: <code>SIGINT</code></li>
+            <li>Broken processes: <code>SIGILL</code> "illegal" instruction</li>
+            <li>Invalid addresses: <code>SIGSEGV, SIGBUS</code></li>
+            <li>I/O errors and situations: <code>SIGPIPE, SIGIO</code></li>
+            <li>A child died <code>SIGCHLD</code></li>
+            <li><p>User signals (for applications): <code>SIGUSR1, SIGUSR2</code></p>
+                <p>To send signals to another process, use <code>int <a href="http://www.gnu.org/software/libc/manual/html_node/Signaling-Another-Process.html#Signaling-Another-Process">kill</a> (pid_t pid, int signum)</code></p>
+                <p></p></li>
+            <li>Controlling terminal: <code>SIGSTOP, SIGSTP</code></li>
+            <li>Killing a process: <code>SIGKILL</code> (The process <em>will</em> die; it cannot protect itself.</li>
+        </ul>
+        
+        <p>Signal handling is a bit of a mess. They should only be used when other means of communication fail.</p>
+        
+        <ul>
             <li>Processes tend to treat signals with higher priority</li>
             <li>Signals need no preparation and are high priority, but very dangerous to use</li>
             <li>Each signal is associated with a default action</li>
+                <ul>
+                    <li><strong>Example:</strong> default for SIGINT is to exit</li>
+                </ul>
             <li>Signals change how an abstract machine works</li>
                 <li>****PLEASE INSERT PICTURE ABOUT THIS****</li>
             <li>Overall, signal handling is a mess, and are only used when other means of communication fail</li>
@@ -88,11 +105,18 @@ void handle_int(int signal) {
     _exit(1);
 }</pre>
             </li>
-            <ul>
-                <li><strong>Note:</strong> you can&rsquo;t use library functions!</li>
-                <li><strong>Note:</strong> cannot use <code>exit(1)</code> because it outputs buffers</li>
-                <li><strong>Note:</strong> do not use printf because it might corrupt the heap</li>
-            </ul>
+                <ul>
+                    <li><strong>Note:</strong> you can&rsquo;t use library functions!</li>
+                    <li><strong>Note:</strong> cannot use <code>exit(1)</code> because it outputs buffers</li>
+                    <li><strong>Note:</strong> do not use printf because it might corrupt the heap</li>
+                </ul>
+        </ul>
+    </li>
+    <li>
+        <h4>Security Rules</h4>
+        <ul>
+            <li>Processes can send signals to any processes with the same User ID</li>
+            
         </ul>
     </li>
 </ol>
@@ -125,7 +149,7 @@ void handle_int(int signal) {
         <pre>
         int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;
         </pre>
-        This function
+        This function exits the calling thread with a status of &rsquo;status&rsquo;. It is similar to the <code>exit</code> functino for processes.
     </li>
     <li>
         <h4>Things a Thread Can Do</h4>
@@ -142,7 +166,8 @@ void handle_int(int signal) {
     <em>This is the first of a two-lecture series. See the next week&rsquo;s lecture notes for more discussion of scheduling.</em>
     <p>Machines have limited resources (CPU cores, memory, bus bandwidth, etc.). When dealing with CPU cores, the operating system needs a system to decide <strong>who goes first</strong>.</p>
 <h3>Policies</h3>
-    <p><strong>Policies are the high-level algorithm used by a scheduler.</strong></p>
+    <p><strong>Policies are the high-level algorithm used by a scheduler.</strong> Since schedulers run so often, good schedulers are fast and have desirable metrics.</p>
+    <embed src="scheduling-graphic.svg" type="image/svg+xml" />
 <h3>Mechanisms</h3>
     <p><strong>Mechanisms are the low-level ways of switching a running thread.</strong> This is analagous to an operating system&rsquo;s methods of switching between processes.</p>
     <p>Each process that has threads has a <strong>thread table</strong>, a table similar to the operating system&rsquo;s process table. Stored in the thread table are a thread&rsquo;s ID, its registers, and more.</p>
