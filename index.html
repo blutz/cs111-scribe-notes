@@ -2,35 +2,11 @@
 <html>
 <head>
     <title>CS 111, Winter 2013 | Scribe notes | January 30, 2013</title>
-    <style type="text/css">
-    body {
-        margin: 30px 50px;
-        font: normal 14px/18px "Helvetica Neue", helvetica, arial, sans-serif;
-    }
-    #authors {
-        margin: 0;
-        list-style: none;
-        padding: 0;
-    }
-    #authors li {
-        float: left;
-        border-right: 1px #ccc dotted;
-        padding: 0 5px;
-    }
-    #authors .last {
-        border: 0;
-    }
-    .clear {
-        clear: both;
-    }
-    p, ul {
-        margin: 0 0 20px 0;
-    }
-    </style>
+    <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-
-<h1>Scribe notes &bull; January 30, 2013</h1>
+<div id="container">
+<h1> CS 111 Scribe notes &bull; January 30, 2013</h1>
 <ul id="authors">
     <li>Jonathan Hao</li>
     <li>Byron Lutz</li>
@@ -38,11 +14,18 @@
     <li class="last">Sam Warring</li>
 </ul>
 <div class="clear"></div>
-<h2>Interrupts &amp; Signals</h2>
-<p><strong>Motivating Example:</strong> The computer is connected via USB to an uninterruptible power supply (UPS). How should the kernel deal with running out of power? <img src="ups.jpg" alt="Uninterruptible power supply (UPS)" style="width:200px;float:right;margin-left:20px;" /></p><!-- original image source: http://www.kevinscrate.com/blog/wp-content/uploads/2007/07/ups.jpg -->
+
+<h2>Contents</h2>
+<ul id="contents">
+    <li><a href="#signals">Interrupts &amp; Signals</a></li>
+    <li><a href="#threads">Threads</a></li>
+    <li><a href="#scheduling">Scheduling</a></li>
+</ul>
+<h2><a name="signals">Interrupts &amp; Signals</a></h2>
+<p><img src="ups.jpg" alt="Uninterruptible power supply (UPS)" style="float:right;width:200px;margin-left:20px;" /><strong>Motivating Example:</strong> The computer is connected via USB to an uninterruptible power supply (UPS). How should the kernel deal with running out of power?</p><!-- original image source: http://www.kevinscrate.com/blog/wp-content/uploads/2007/07/ups.jpg -->
 
 <p><strong>One solution:</strong> Take a snapshot of RAM, CPU registers and copy them to the disk. Then, shut off power. When power comes back on, reverse the process and restore everything as if the programs never noticed the power interruption.</p>
-<p>What&rsquo;s wrong with this?</p>
+<h4>What's wrong with this?</h4>
 <ul>
     <li>Open network connections will be lost</li>
     <li>Takes too long</li>
@@ -51,77 +34,110 @@
     <li>Has security issues</li>
 </ul>
 
-<h3>How to inform user processes of the situation</h3>
+<h4>How to inform user processes of the situation</h4>
 <ol>
     <li>
-        <h4>Polling</h4>
-        <p>Use a file <code>/dev/power</code>. Read from it. If the file reads "!", power is low. If it reads " " (a space) power is OK.</p>
-        <ul>
-            <li>For every program that cares about power, and every loop that might execute for more than a few seconds, insert a check</li>
-            <li>This is a pain to program, and can chew up CPU time</li>
+        <p><strong>Polling</strong><br />
+        Use a file <code>/dev/power</code>. Read from it. If the file reads "!", power is low. If it reads " " (a space) power is OK.</p>
+        <p>For every program that cares about power, and every loop that might execute for more than a few seconds, insert a check for <code>/dev/power</code>. This is not a satisfactory solution. It's a pain to program, and will chew up CPU time.</p>
         </ul>
     </li>
     <li>
-        <h4>Signals</h4>
-        <p><strong>Example:</strong> Press <kbd>^C</kbd> into a terminal to abort a process (this one takes a bunch of zeroes and throws them away).</p>
-        <pre>$ cat /dev/zero > /dev/null
+        <p><strong>Signals</strong><br />
+        With signals, the kernel "magically" inserts a check into the program when the power gets low. A signal handler receives the signal from the kernel and takes the necessary steps to fix the situation.</p>
+</ol>
+<h3>Motivations for Signals</h3>
+<p>
+<strong>Example:</strong> Press <kbd>^C</kbd> into a terminal to abort a process (this one takes a bunch of zeroes and throws them away).</p>
+<pre>
+$ cat /dev/zero > /dev/null
 ^C
 $</pre>
-        <p>The terminal driver informs the operating system of the <kbd>^C</kbd>. The operating system sends <code>SIGINT</code> to all processes with this terminal as the <em>controlling terminal</em></p>
-        
-        <p>With signals, the kernel "magically" inserts a check into the program.</p>
-        <h4>Motivations for Signals</h4>
-        <ul>
-            <li>Uncooperative processes: <code>SIGINT</code></li>
-            <li>Broken processes: <code>SIGILL</code> "illegal" instruction</li>
-            <li>Invalid addresses: <code>SIGSEGV, SIGBUS</code></li>
-            <li>I/O errors and situations: <code>SIGPIPE, SIGIO</code></li>
-            <li>A child died <code>SIGCHLD</code></li>
-            <li><p>User signals (for applications): <code>SIGUSR1, SIGUSR2</code></p>
-                <p>To send signals to another process, use <code>int <a href="http://www.gnu.org/software/libc/manual/html_node/Signaling-Another-Process.html#Signaling-Another-Process">kill</a> (pid_t pid, int signum)</code></p>
-                <p></p></li>
-            <li>Controlling terminal: <code>SIGSTOP, SIGSTP</code></li>
-            <li>Killing a process: <code>SIGKILL</code> (The process <em>will</em> die; it cannot protect itself.</li>
-        </ul>
-        
-        <p>Signal handling is a bit of a mess. They should only be used when other means of communication fail.</p>
-        
-        <ul>
-            <li>Processes tend to treat signals with higher priority</li>
-            <li>Signals need no preparation and are high priority, but very dangerous to use</li>
-            <li>Each signal is associated with a default action</li>
-                <ul>
-                    <li><strong>Example:</strong> default for SIGINT is to exit</li>
-                </ul>
-            <li>Signals change how an abstract machine works</li>
-                <li>****PLEASE INSERT PICTURE ABOUT THIS****</li>
-            <li>Overall, signal handling is a mess, and are only used when other means of communication fail</li>
-            <li><pre>
-#include <signal.h>
+<p>The terminal driver informs the operating system of the <kbd>^C</kbd>. The operating system sends <code>SIGINT</code> to all processes with this terminal as the <em>controlling terminal</em>.</p>
+<ul>
+    <li>Uncooperative processes: <code>SIGINT</code></li>
+    <li>Broken processes: <code>SIGILL</code>. An "illegal" instruction.</li>
+    <li>Invalid addresses: <code>SIGSEGV, SIGBUS</code></li>
+    <li>I/O errors and situations: <code>SIGPIPE, SIGIO</code></li>
+    <li>A child died <code>SIGCHLD</code></li>
+    <li>User signals (for applications): <code>SIGUSR1, SIGUSR2</code>. To send signals to another process, use <code>int <a href="http://www.gnu.org/software/libc/manual/html_node/Signaling-Another-Process.html#Signaling-Another-Process">kill</a> (pid_t pid, int signum)</code>.</li>
+    <li>Controlling terminal: <code>SIGSTOP, SIGSTP</code></li>
+    <li>Killing a process: <code>SIGKILL</code>. The process <em>will</em> die; it cannot protect itself.</li>
+</ul>
+
+<p>Signal handling is a bit of a mess. They should only be used when other means of communication fail.</p>
+
+<h3>Signals vs. Other means of communication</h3>
+<p><strong>Example:</strong> Using the kill command (<code>kill -USR1 391</code>) vs. sending a message with a pipe (<code>echo x | ...</code>) to end a process.</p>
+<ul>
+    <li>Processes tend to treat signals with higher priority and are less likely to ignore them</li>
+    <li>Signals are ad hoc</li>
+    <li>They can be dangerous to use</li>
+</ul>
+
+<h3>Signals change how our abstract machine works</h3>
+<p>When a signal arrives to a process, it acts as if it inserts an asnchronous function call between any pair of instructions. <em><b style="color:red">TO DO:</b> Picture?</em></p>
+<p>This following is an example of a signal handler. When the process receives the <code>SIGINT</code> signal, it prints "ouch!" and exits. Programs don't neccessarily have to define a signal handler. The default action associated with <code>SIGINT</code> is to exit.</p>
+<p class="m1"><strong>Signal handler 1:</strong></p>
+<pre>
+#include &lt;signal.h&gt;
+
+/* defines a new signal handler,
+   returning the old one if any */
+signal(SIGINT, handle_int); 
+
+void handle_int(int signal)
+{
+    printf("ouch!\n");
+    exit(1);
+}</pre>
+<p>This signal handler has some potential issues. Internally, <code>printf()</code> (part of the stdio library) maintains output buffers. This means that it calls <code>malloc()</code> to allocate memory in the heap. If this signal arrives during a normal call to <code>malloc()</code> in the normal application code, there is a possibility that the signal handler's call to <code>malloc()</code> from <code>printf("ouch!\n")</code> can corrupt the heap and crash the program. Remember, signals can arrive between any pair of instructions!</p>
+<p>To illustrate this, let us imagine that our heap is a simple array, and <code>malloc()</code> is implemented as follows.</p>
+<pre style="margin: 0 0 20px 30px;float: left;">
+char h[1000000]; // heap
+char *hp; // heap pointer
+char *hl; // heap limit
+ ____________ ____________________
+| used space |     free space     |
+|____________|____________________| 
+^h           ^hp                  ^hl
+</pre>
+<pre style="margin: 0 0 20px 20px; float: left;" >
+inline void *malloc (size_t s)
+{
+    char *r = hp;
+        // what if SIGINT arrives here?
+    hp = hp + s;
+    return r;
+}
+</pre>
+
+<p style="clear: both;">Suppose we have an ordinary <code>malloc()</code> call in our application, and then a <code>SIGINT</code> signal immediately arrives after the <code>char *r</code> declaration within <code>malloc()</code>. The signal handler will issue a call to <code>printf()</code>, which in turn also calls <code>malloc()</code>. This call will allocate space at the same <code>hp</code> value, because the previous call to <code>malloc()</code> did not increment the heap pointer yet. If the signal returns, the original call to <code>malloc()</code> no longer has a valid heap pointer.</p>
+
+<p>This means our signal handler must limit to asyncrhonous signal-safe functions. This even excludes our call to <code>exit()</code>, because it flushes all output buffers before exiting the process. To account for these possible issues, we must rewrite our original handler as follows, using the <code>write()</code> and <code>_exit()</code> system calls instead.</p>
+<pre>
+#include &lt;signal.h&gt;
+
 signal(SIGINT, handle_int);
 
-void handle_int(int signal) {
-    write(STD_ERR)FILENO,"ouch!\n",6);
+void handle_int(int signal)
+{
+    write(STD_ERR_FILENO, "ouch!\n", 6);
     _exit(1);
 }</pre>
-            </li>
-                <ul>
-                    <li><strong>Note:</strong> you can&rsquo;t use library functions!</li>
-                    <li><strong>Note:</strong> cannot use <code>exit(1)</code> because it outputs buffers</li>
-                    <li><strong>Note:</strong> do not use printf because it might corrupt the heap</li>
-                </ul>
-        </ul>
-    </li>
-    <li>
-        <h4>Security Rules</h4>
-        <ul>
-            <li>Processes can send signals to any processes with the same User ID</li>
-            
-        </ul>
-    </li>
-</ol>
 
-<h2>Threads</h2>
+<h3>Blocking signals</h3>
+<p><b style="color: red">TO DO</b></p>
+
+<pre>sigprocmask()</pre>
+
+<p>Why doesn't <code>malloc()</code> block signals?</p>
+<ul>
+    <li>Overhead of issuing a system call. <code>malloc()</code> needs to be fast.</li>
+    <li>Up to the programmer to insure</li>
+</ul>
+
+<h2><a name="threads">Threads</a></h2>
 <ol>
     <li>
         <h4>Compared with Processes</h4>
@@ -135,20 +151,18 @@ void handle_int(int signal) {
     <li>
         <h4>Important System Calls</h4>
         <pre>
-        int pthread_create (pthread_t *thread,          // Identifies the thread.
-                            const pthread_attr_t *attr, // Options for making the thread.
-                            void *(*fn)(void *),        // The thread executes this function...
-                            void *arg);                 // ...given this argument.
+int pthread_create (pthread_t *thread,          // Identifies the thread.
+                    const pthread_attr_t *attr, // Options for making the thread.
+                    void *(*fn)(void *),        // The thread executes this function...
+                    void *arg);                 // ...given this argument.
         </pre>
         This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, the function returns 0. If unsucessful, it returns an error numbewr.
         <pre>
-        int ptrhead_join (pthread_t id,    // Identifies the thread.
-                          void *status);   // Stores the return value of the thread.
+int ptrhead_join (pthread_t id,    // Identifies the thread.
+                  void *status);   // Stores the return value of the thread.
         </pre>
         This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, the function returns 0 to the caller. If unsuccessful, it returns an error number.
-        <pre>
-        int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;
-        </pre>
+        <pre>int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;</pre>
         This function exits the calling thread with a status of &rsquo;status&rsquo;. It is similar to the <code>exit</code> functino for processes.
     </li>
     <li>
@@ -162,13 +176,14 @@ void handle_int(int signal) {
     </li>
 </ol>
 
-<h2>Scheduling</h2>
-    <em>This is the first of a two-lecture series. See the next week&rsquo;s lecture notes for more discussion of scheduling.</em>
+<h2><a name="scheduling">Scheduling</a></h2>
+    <p><em>This is the first of a two-lecture series. See the next week&rsquo;s lecture notes for more discussion of scheduling.</em></p>
     <p>Machines have limited resources (CPU cores, memory, bus bandwidth, etc.). When dealing with CPU cores, the operating system needs a system to decide <strong>who goes first</strong>.</p>
 <h3>Policies</h3>
     <p><strong>Policies are the high-level algorithm used by a scheduler.</strong> Since schedulers run so often, good schedulers are fast and have desirable metrics.</p>
     <p>Many of the metrics we use today are from automobile production. The graphic below illustrates some of the common metrics used if one factory receives an order for Model T&rsquo;s and Model A&rsquo;s.</p>
-    <embed src="scheduling-graphic.svg" type="image/svg+xml" style="margin-bottom:20px;"/>
+    <h4 class="m0 center">Automobile Manufacturing Metrics</h4>
+    <p class="center"><embed src="scheduling-graphic.svg" type="image/svg+xml" /></p>
     <p>Since car production scheduling and thread/process scheduling are so similar, many of the terms remain unchanged. Some other common time metrics are&hellip;
     <ul>
         <li>Average wait time</li>
@@ -199,7 +214,13 @@ void handle_int(int signal) {
         <li>The operating system calls <code>reti</code> to return the CPU to user mode and continue execution of <code>U</code>.</li>
     </ol>
     </p>
-<hr />
-<em>&copy; 2013 Jonathan Hao, Byron Lutz, David Voong, and Sam Warring. Released under the <a href="http://www.gnu.org/licenses/gpl-3.0.html">GNU Public License version 3</a>.</em>
+
+<div id="top"><a href="#">&uarr; Top</a></div>
+
+<footer>
+    <hr />
+    <p><em>&copy; 2013 Jonathan Hao, Byron Lutz, David Voong, and Sam Warring. Released under the <a href="http://www.gnu.org/licenses/gpl-3.0.html">GNU Public License version 3</a>.</em></p>
+</footer>
+</div>
 </body>
 </html>
