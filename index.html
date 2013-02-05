@@ -34,12 +34,12 @@
 <ul id="authors">
     <li>Jonathan Hao</li>
     <li>Byron Lutz</li>
-    <li>Sam Warring</li>
-    <li class="last">David Voong</li>
+    <li>David Voong</li>
+    <li class="last">Sam Warring</li>
 </ul>
 <div class="clear"></div>
 <h2>Interrupts &amp; Signals</h2>
-<p><strong>Motivating Example:</strong> The computer is connected via USB to an uninterruptible power supply (UPS). How should the kernel deal with running out of power? <img src="http://www.kevinscrate.com/blog/wp-content/uploads/2007/07/ups.jpg" alt="Uninterruptible power supply (UPS)" style="width:200px;float:right;margin-left:20px;" /></p>
+<p><strong>Motivating Example:</strong> The computer is connected via USB to an uninterruptible power supply (UPS). How should the kernel deal with running out of power? <img src="ups.jpg" alt="Uninterruptible power supply (UPS)" style="width:200px;float:right;margin-left:20px;" /></p><!-- original image source: http://www.kevinscrate.com/blog/wp-content/uploads/2007/07/ups.jpg -->
 
 <p><strong>One solution:</strong> Take a snapshot of RAM, CPU registers and copy them to the disk. Then, shut off power. When power comes back on, reverse the process and restore everything as if the programs never noticed the power interruption.</p>
 <p>What&rsquo;s wrong with this?</p>
@@ -167,7 +167,25 @@ void handle_int(int signal) {
     <p>Machines have limited resources (CPU cores, memory, bus bandwidth, etc.). When dealing with CPU cores, the operating system needs a system to decide <strong>who goes first</strong>.</p>
 <h3>Policies</h3>
     <p><strong>Policies are the high-level algorithm used by a scheduler.</strong> Since schedulers run so often, good schedulers are fast and have desirable metrics.</p>
-    <embed src="scheduling-graphic.svg" type="image/svg+xml" />
+    <p>Many of the metrics we use today are from automobile production. The graphic below illustrates some of the common metrics used if one factory receives an order for Model T&rsquo;s and Model A&rsquo;s.</p>
+    <embed src="scheduling-graphic.svg" type="image/svg+xml" style="margin-bottom:20px;"/>
+    <p>Since car production scheduling and thread/process scheduling are so similar, many of the terms remain unchanged. Some other common time metrics are&hellip;
+    <ul>
+        <li>Average wait time</li>
+        <li>Average response time</li>
+        <li>Worst-case response time</li>
+        <li>Best-case response time</li>
+        <li>Variance in response time</li>
+        <li>And more</li>
+    </ul>
+    </p>
+    <p>Some other general metrics are&hellip;
+    <ul>
+        <li><strong>Utilization</strong>: The percentage of time is the factory/CPU busy. (Google&rsquo;s data centers had an average utilization of 0.3 in 2011.)</li>
+        <li><strong>Throughout</strong>: The rate of useful work getting done.</li>
+    </ul>
+    </p>
+    <p>Sometimes some metrics, especially resource/CPU utilization are kept lower than needed to save capacity for emergencies and non-characteristic system usage.</p>
 <h3>Mechanisms</h3>
     <p><strong>Mechanisms are the low-level ways of switching a running thread.</strong> This is analagous to an operating system&rsquo;s methods of switching between processes.</p>
     <p>Each process that has threads has a <strong>thread table</strong>, a table similar to the operating system&rsquo;s process table. Stored in the thread table are a thread&rsquo;s ID, its registers, and more.</p>
@@ -181,5 +199,7 @@ void handle_int(int signal) {
         <li>The operating system calls <code>reti</code> to return the CPU to user mode and continue execution of <code>U</code>.</li>
     </ol>
     </p>
+<hr />
+<em>&copy; 2013 Jonathan Hao, Byron Lutz, David Voong, and Sam Warring</em>
 </body>
 </html>
