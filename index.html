@@ -33,18 +33,28 @@
     <li>Byron Lutz</li>
     <li>Sam Warring</li>
     <li class="last">David Voong</li>
-    <div class="clear"></div>
 </ul>
+<div class="clear"></div>
 <h2>Interrupts &amp; Signals</h2>
+<p><strong>Motivating Example:</strong> The computer is connected via USB to an uninterruptible power supply (UPS). How should the kernel deal with running out of power? <img src="http://www.kevinscrate.com/blog/wp-content/uploads/2007/07/ups.jpg" alt="Uninterruptible power supply (UPS)" /></p>
 
-<h3>How to inform user processes of situation</h3>
-<p><strong>Example:</strong> The computer is connected Uninterruptable power supply connected with USB.</p>
+<p><strong>One solution:</strong> Take a snapshot of RAM, CPU registers and copy them to the disk. Then, shut off power. When power comes back on, reverse the process and restore everything as if the programs never noticed the power interruption.</p>
+<p>What&rsquo;s wrong with this?</p>
+<ul>
+    <li>Open network connections will be lost</li>
+    <li>Takes too long</li>
+    <li>Hard to capture a consistent snapshot</li>
+    <li>Time-sensitive operations will be lost</li>
+    <li>Has security issues</li>
+</ul>
+
+<h3>How to inform user processes of the situation</h3>
 <ol>
     <li>
-        <h4>Use a file - Polling</h4>
+        <h4>Polling</h4>
+        <p>Use a file <code>/dev/power</code>. Read from it. If the file reads "!", power is low. If it reads "_" power is OK.</p>
         <ul>
-            <li>Every program that cares abot power</li>
-            <li>Every loop that might execute for more than a few seconds, insert a check</li>
+            <li>For every program that cares about power, and every loop that might execute for more than a few seconds, insert a check</li>
             <li>This is a pain to program, and can chew up CPU time</li>
         </ul>
     </li>
@@ -52,13 +62,37 @@
         <h4>Signals</h4>
         <ul>
             <li>With signals, the kernel "magically" inserts a check into the program.</li>
-            <li>Motivations for Signals
+            <li><strong>Motivations for Signals</strong>
                 <ul>
                     <li>Dealing with Uncooperative Processes</li>
                     <li>Dealing with Broken Processes</li>
-                    <li>
+                    <li>Dealing with I/O</li>
+                    <li>A child died</li>
+                    <li>User signals</li>
+                    <li>Controlling Terminal</li>
+                    <li>Killing</li>
                 </ul>
             </li>
+            <li>Processes tend to treat signals with higher priority</li>
+            <li>Signals need no preparation and are high priority, but very dangerous to use</li>
+            <li>Each signal is associated with a default action</li>
+            <li>Signals change how an abstract machine works</li>
+                <li>****PLEASE INSERT PICTURE ABOUT THIS****</li>
+            <li>Overall, signal handling is a mess, and are only used when other means of communication fail</li>
+            <li><pre>
+#include <signal.h>
+signal(SIGINT, handle_int);
+
+void handle_int(int signal) {
+    write(STD_ERR)FILENO,"ouch!\n",6);
+    _exit(1);
+}</pre>
+            </li>
+            <ul>
+                <li><strong>Note:</strong> you can&rsquo;t use library functions!</li>
+                <li><strong>Note:</strong> cannot use <code>exit(1)</code> because it outputs buffers</li>
+                <li><strong>Note:</strong> do not use printf because it might corrupt the heap</li>
+            </ul>
         </ul>
     </li>
 </ol>
@@ -68,14 +102,30 @@
     <li>
         <h4>Compared with Processes</h4>
         <ul>
-            <li>Each process gets its own memory space, but threads share memory</li>
-            <li>Threads share file-descriptors</li>
-            <li>Threads <u>dont</u> share registers (including instruction pointer)</li>
-            <li>Threads <u>dont</u> share a stack</li>
-        </ul>
+            <li>Like processes, threads share memory, file descripters, and more (i.e. uid, pid, etc.)</li>
+            <li>Unlike processes, threads have their own instruction pointer, registers, and stack</li>
+            <li>Pro: Threads help break down programs into smaller (and simpler) pieces</li>
+            <li>Con: Threads are prone to synchronization issues, both in performance and correctness</li>
+         </ul>
     </li>
     <li>
         <h4>Important System Calls</h4>
+        <pre>
+        int pthread_create (pthread_t *thread,          // Identifies the thread.
+                            const pthread_attr_t *attr, // Options for making the thread.
+                            void *(*fn)(void *),        // The thread executes this function...
+                            void *arg);                 // ...given this argument.
+        </pre>
+        This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, the function returns 0. If unsucessful, it returns an error numbewr.
+        <pre>
+        int ptrhead_join (pthread_t id,    // Identifies the thread.
+                          void *status);   // Stores the return value of the thread.
+        </pre>
+        This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, the function returns 0 to the caller. If unsuccessful, it returns an error number.
+        <pre>
+        int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;
+        </pre>
+        This function
     </li>
     <li>
         <h4>Things a Thread Can Do</h4>
@@ -94,6 +144,17 @@
 <h3>Policies</h3>
     <p><strong>Policies are the high-level algorithm used by a scheduler.</strong></p>
 <h3>Mechanisms</h3>
-    <p><strong>Mechanisms are the low-level ways of <em>implementing</em> a scheduling policy.</strong></p>
+    <p><strong>Mechanisms are the low-level ways of switching a running thread.</strong> This is analagous to an operating system&rsquo;s methods of switching between processes.</p>
+    <p>Each process that has threads has a <strong>thread table</strong>, a table similar to the operating system&rsquo;s process table. Stored in the thread table are a thread&rsquo;s ID, its registers, and more.</p>
+    <p>To implement a context switch from thread <code>T</code> to thread <code>U</code>...
+    <ol>
+        <li>Control must return to the operating system. Either the thread&rsquo;s time slice expires or the application directly calls an operating system interrupt:
+            <pre>int 0x80</pre>
+        </li>
+        <li>Now that the operating system is in control, it must save all of <code>T</code>&rsquo;s registers (saved on the stack during the interrupt instruction) into the thread table.</li>
+        <li>By now, <code>T</code>&rsquo;s state is backed up in the thread table so <code>U</code>&rsquo;s state (registers and instruction pointer) should be copied from the thread table to the appropriate place on the stack.</li>
+        <li>The operating system calls <code>reti</code> to return the CPU to user mode and continue execution of <code>U</code>.</li>
+    </ol>
+    </p>
 </body>
 </html>
