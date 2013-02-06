@@ -78,7 +78,7 @@ $</code></pre>
 </ul>
 
 <h3>Signals change how our abstract machine works</h3>
-<p>When a signal arrives to a process, it acts as if it inserts an asnchronous function call between any pair of instructions. <em><b style="color:red">TO DO:</b> Picture?</em></p>
+<p>When a signal arrives to a process, it acts as if it inserts an asnchronous function call between any pair of instructions.</p>
 <p>This following is an example of a signal handler. When the process receives the <code>SIGINT</code> signal, it prints "ouch!" and exits. Programs don't neccessarily have to define a signal handler. The default action associated with <code>SIGINT</code> is to exit.</p>
 <p class="m1"><strong>Signal handler 1:</strong></p>
 <pre><code>#include &lt;signal.h&gt;
@@ -113,7 +113,7 @@ char *hl; // heap limit
 
 <p style="clear: both;">Suppose we have an ordinary <code>malloc()</code> call in our application, and then a <code>SIGINT</code> signal immediately arrives after the <code>char *r</code> declaration within <code>malloc()</code>. The signal handler will issue a call to <code>printf()</code>, which in turn also calls <code>malloc()</code>. This call will allocate space at the same <code>hp</code> value, because the previous call to <code>malloc()</code> did not increment the heap pointer yet. If the signal returns, the original call to <code>malloc()</code> no longer has a valid heap pointer.</p>
 
-<p>This means our signal handler must limit to asyncrhonous signal-safe functions. This even excludes our call to <code>exit()</code>, because it flushes all output buffers before exiting the process. To account for these possible issues, we must rewrite our original handler as follows, using the <code>write()</code> and <code>_exit()</code> system calls instead.</p>
+<p id="asyncsignalsafedesc">This means our signal handler must limit to <strong>asynchronous signal-safe functions</strong> (async-signal safe). This even excludes our call to <code>exit()</code>, because it flushes all output buffers before exiting the process. To account for these possible issues, we must rewrite our original handler as follows, using the <code>write()</code> and <code>_exit()</code> system calls instead.</p>
 <p class="m1"><strong>Signal handler 2:</strong></p>
 <pre><code>#include &lt;signal.h&gt;
 
@@ -124,6 +124,43 @@ void handle_int(int signal)
     write(STD_ERR_FILENO, "ouch!\n", 6);
     _exit(1);
 }</code></pre>
+
+<strong>Async-signal-safe functions</strong>
+<p>The following functions are <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html">defined by POSIX.1-2004</a> to be async-signal safe (as described <a href="#asyncsignalsafedesc">above</a>).</p>
+<p><pre>_Exit()             fexecve()       poll()                sigqueue()
+_exit()             fork()          posix_trace_event()   sigset()
+abort()             fstat()         pselect()             sigsuspend()
+accept()            fstatat()       raise()               sleep()
+access()            fsync()         read()                sockatmark()
+aio_error()         ftruncate()     readlink()            socket()
+aio_return()        futimens()      readlinkat()          socketpair()
+aio_suspend()       getegid()       recv()                stat()
+alarm()             geteuid()       recvfrom()            symlink()
+bind()              getgid()        recvmsg()             symlinkat()
+cfgetispeed()       getgroups()     rename()              tcdrain()
+cfgetospeed()       getpeername()   renameat()            tcflow()
+cfsetispeed()       getpgrp()       rmdir()               tcflush()
+cfsetospeed()       getpid()        select()              tcgetattr()
+chdir()             getppid()       sem_post()            tcgetpgrp()
+chmod()             getsockname()   send()                tcsendbreak()
+chown()             getsockopt()    sendmsg()             tcsetattr()
+clock_gettime()     getuid()        sendto()              tcsetpgrp()
+close()             kill()          setgid()              time()
+connect()           link()          setpgid()             timer_getoverrun()
+creat()             linkat()        setsid()              timer_gettime()
+dup()               listen()        setsockopt()          timer_settime()
+dup2()              lseek()         setuid()              times()
+execl()             lstat()         shutdown()            umask()
+execle()            mkdir()         sigaction()           uname()
+execv()             mkdirat()       sigaddset()           unlink()
+execve()            mkfifo()        sigdelset()           unlinkat()
+faccessat()         mkfifoat()      sigemptyset()         utime()
+fchmod()            mknod()         sigfillset()          utimensat()
+fchmodat()          mknodat()       sigismember()         utimes()
+fchown()            open()          signal()              wait()
+fchownat()          openat()        sigpause()            waitpid()
+fcntl()             pause()         sigpending()          write()
+fdatasync()         pipe()          sigprocmask()</pre></p>
 
 <h3>Blocking signals</h3>
 <p><b style="color: red">TO DO</b></p>
