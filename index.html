@@ -3,6 +3,9 @@
 <head>
     <title>CS 111, Winter 2013 | Scribe notes | January 30, 2013</title>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" href="http://yandex.st/highlightjs/7.3/styles/default.min.css">
+    <script src="http://yandex.st/highlightjs/7.3/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
 </head>
 <body>
 <div id="container">
@@ -49,10 +52,9 @@
 <h3>Motivations for Signals</h3>
 <p>
 <strong>Example:</strong> Press <kbd>^C</kbd> into a terminal to abort a process (this one takes a bunch of zeroes and throws them away).</p>
-<pre>
-$ cat /dev/zero > /dev/null
+<pre><code>$ cat /dev/zero > /dev/null
 ^C
-$</pre>
+$</code></pre>
 <p>The terminal driver informs the operating system of the <kbd>^C</kbd>. The operating system sends <code>SIGINT</code> to all processes with this terminal as the <em>controlling terminal</em>.</p>
 <ul>
     <li>Uncooperative processes: <code>SIGINT</code></li>
@@ -79,8 +81,7 @@ $</pre>
 <p>When a signal arrives to a process, it acts as if it inserts an asnchronous function call between any pair of instructions. <em><b style="color:red">TO DO:</b> Picture?</em></p>
 <p>This following is an example of a signal handler. When the process receives the <code>SIGINT</code> signal, it prints "ouch!" and exits. Programs don't neccessarily have to define a signal handler. The default action associated with <code>SIGINT</code> is to exit.</p>
 <p class="m1"><strong>Signal handler 1:</strong></p>
-<pre>
-#include &lt;signal.h&gt;
+<pre><code>#include &lt;signal.h&gt;
 
 /* defines a new signal handler,
    returning the old one if any */
@@ -90,34 +91,31 @@ void handle_int(int signal)
 {
     printf("ouch!\n");
     exit(1);
-}</pre>
+}</code></pre>
 <p>This signal handler has some potential issues. Internally, <code>printf()</code> (part of the stdio library) maintains output buffers. This means that it calls <code>malloc()</code> to allocate memory in the heap. If this signal arrives during a normal call to <code>malloc()</code> in the normal application code, there is a possibility that the signal handler's call to <code>malloc()</code> from <code>printf("ouch!\n")</code> can corrupt the heap and crash the program. Remember, signals can arrive between any pair of instructions!</p>
 <p>To illustrate this, let us imagine that our heap is a simple array, and <code>malloc()</code> is implemented as follows.</p>
-<pre style="margin: 0 0 20px 30px;float: left;">
-char h[1000000]; // heap
+<pre style="margin: 0 0 20px 30px;float: left;"><code>char h[1000000]; // heap
 char *hp; // heap pointer
 char *hl; // heap limit
  ____________ ____________________
 | used space |     free space     |
 |____________|____________________| 
 ^h           ^hp                  ^hl
-</pre>
-<pre style="margin: 0 0 20px 20px; float: left;" >
-inline void *malloc (size_t s)
+</code></pre>
+<pre style="margin: 0 0 20px 20px; float: left;" ><code>inline void *malloc (size_t s)
 {
     char *r = hp;
         // what if SIGINT arrives here?
     hp = hp + s;
     return r;
 }
-</pre>
+</code></pre>
 
 <p style="clear: both;">Suppose we have an ordinary <code>malloc()</code> call in our application, and then a <code>SIGINT</code> signal immediately arrives after the <code>char *r</code> declaration within <code>malloc()</code>. The signal handler will issue a call to <code>printf()</code>, which in turn also calls <code>malloc()</code>. This call will allocate space at the same <code>hp</code> value, because the previous call to <code>malloc()</code> did not increment the heap pointer yet. If the signal returns, the original call to <code>malloc()</code> no longer has a valid heap pointer.</p>
 
 <p>This means our signal handler must limit to asyncrhonous signal-safe functions. This even excludes our call to <code>exit()</code>, because it flushes all output buffers before exiting the process. To account for these possible issues, we must rewrite our original handler as follows, using the <code>write()</code> and <code>_exit()</code> system calls instead.</p>
 <p class="m1"><strong>Signal handler 2:</strong></p>
-<pre>
-#include &lt;signal.h&gt;
+<pre><code>#include &lt;signal.h&gt;
 
 signal(SIGINT, handle_int);
 
@@ -125,12 +123,12 @@ void handle_int(int signal)
 {
     write(STD_ERR_FILENO, "ouch!\n", 6);
     _exit(1);
-}</pre>
+}</code></pre>
 
 <h3>Blocking signals</h3>
 <p><b style="color: red">TO DO</b></p>
 
-<pre>sigprocmask()</pre>
+<pre><code>sigprocmask()</code></pre>
 
 <p>Why doesn't <code>malloc()</code> block signals?</p>
 <ul>
@@ -151,19 +149,17 @@ void handle_int(int signal)
     </li>
     <li>
         <h4>Important System Calls</h4>
-        <pre>
-int pthread_create (pthread_t *thread,          // Identifies the thread.
+        <pre><code>int pthread_create (pthread_t *thread,          // Identifies the thread.
                     const pthread_attr_t *attr, // Options for making the thread.
                     void *(*fn)(void *),        // The thread executes this function...
                     void *arg);                 // ...given this argument.
-        </pre>
+        </code></pre>
         This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, <code>pthread_create</code> returns 0. If unsucessful, it returns an error number.
-        <pre>
-int ptrhead_join (pthread_t id,    // Identifies the thread.
+        <pre><code>int ptrhead_join (pthread_t id,    // Identifies the thread.
                   void *status);   // Stores the return value of the thread.
-        </pre>
+        </code></pre>
         This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, <code>pthread_join</code> returns 0 to the caller. If unsuccessful, it returns an error number.
-        <pre>int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;</pre>
+        <pre><code>int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;</code></pre>
         This function exits the calling thread with a status of &rsquo;status&rsquo;. It is similar to the <code>exit</code> function for processes.
     </li>
     <li>
@@ -172,11 +168,11 @@ int ptrhead_join (pthread_t id,    // Identifies the thread.
 		      <li>Perform computation</li>
 				<li>
 				Busy wait: continually check for some condition. This consumes CPU cycles, but it continues as soon as the condition is met.
-				<pre>while (device_is_busy ()) continue; </pre>
+				<pre><code>while (device_is_busy ()) continue; </code></pre>
 				</li>
 				<li>
 				Yield: transfer control to another thread, and return here later. This consumes less CPU cycles than the busy wait, but it increases the device latency
-				<pre>while (device_is_busy ()) pthread_yield ();</pre>
+				<pre><code>while (device_is_busy ()) pthread_yield ();</code></pre>
 				</li>
 				<li>Block: yield and tell OS "I am waiting for device x." OS will not wake thread until device is ready.</li>
 		  </ul>
@@ -229,7 +225,7 @@ int ptrhead_join (pthread_t id,    // Identifies the thread.
     <p>To implement a context switch from thread <code>T</code> to thread <code>U</code>...
     <ol>
         <li>Control must return to the operating system. Either the thread&rsquo;s time slice expires or the application directly calls an operating system interrupt:
-            <pre>int 0x80</pre>
+            <pre><code>int 0x80</code></pre>
         </li>
         <li>Now that the operating system is in control, it must save all of <code>T</code>&rsquo;s registers (saved on the stack during the interrupt instruction) into the thread table.</li>
         <li>By now, <code>T</code>&rsquo;s state is backed up in the thread table so <code>U</code>&rsquo;s state (registers and instruction pointer) should be copied from the thread table to the appropriate place on the stack.</li>
