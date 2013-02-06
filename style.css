@@ -9,6 +9,7 @@ body {
     padding: 10px 25px;
     margin: 0 auto;
     background: #fff;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
 }
 #authors {
     margin: 0;
@@ -67,4 +68,7 @@ pre {
 #top a {
     color: blue;
     text-decoration: none;
+    background-color: white;
+    padding: 6px;
+    border: 1px solid #eee;
 }
