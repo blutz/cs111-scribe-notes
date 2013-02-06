@@ -4,6 +4,9 @@ body {
     font: normal 14px/normal "Helvetica Neue", helvetica, arial, sans-serif;
     background: #eee;
 }
+a:link:hover, a:visited:hover, #contents a:visited:hover {
+    color: red;
+}
 #container {
     max-width: 1000px;
     padding: 10px 25px;
@@ -60,15 +63,22 @@ pre {
     font-size: 18px;
     line-height: normal;
 }
-#top a {
+#top {
     position: fixed;
     right: 30px;
     bottom: 20px;
 }
 #top a {
-    color: blue;
+    font-size: 10px;
+    text-transform: uppercase;
+    font-family: arial, sans-serif;
+    color: #fff;
     text-decoration: none;
-    background-color: white;
-    padding: 6px;
-    border: 1px solid #eee;
+    background: #333;
+    padding: 8px 10px;
+    border-radius: 3px;
+}
+#top a:hover
+{
+    background: #444;
 }
