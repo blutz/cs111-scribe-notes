@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>CS 111, Winter 2013 | Scribe notes | January 30, 2013</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" href="http://yandex.st/highlightjs/7.3/styles/default.min.css">
     <script src="http://yandex.st/highlightjs/7.3/highlight.min.js"></script>
@@ -24,7 +25,7 @@
     <li><a href="#threads">Threads</a></li>
     <li><a href="#scheduling">Scheduling</a></li>
 </ul>
-<h2><a name="signals">Interrupts &amp; Signals</a></h2>
+<h2 id="signals">Interrupts &amp; Signals</h2>
 <p><img src="ups.jpg" alt="Uninterruptible power supply (UPS)" style="float:right;width:200px;margin-left:20px;" /><strong>Motivating Example:</strong> The computer is connected via USB to an uninterruptible power supply (UPS). How should the kernel deal with running out of power?</p><!-- original image source: http://www.kevinscrate.com/blog/wp-content/uploads/2007/07/ups.jpg -->
 
 <p><strong>One solution:</strong> Take a snapshot of RAM, CPU registers and copy them to the disk. Then, shut off power. When power comes back on, reverse the process and restore everything as if the programs never noticed the power interruption.</p>
@@ -43,7 +44,6 @@
         <p><strong>Polling</strong><br />
         Use a file <code>/dev/power</code>. Read from it. If the file reads "!", power is low. If it reads " " (a space) power is OK.</p>
         <p>For every program that cares about power, and every loop that might execute for more than a few seconds, insert a check for <code>/dev/power</code>. This is not a satisfactory solution. It's a pain to program, and will chew up CPU time.</p>
-        </ul>
     </li>
     <li>
         <p><strong>Signals</strong><br />
@@ -136,7 +136,7 @@ void handle_int(int signal)
     <li>Up to the programmer to insure</li>
 </ul>
 
-<h2><a name="threads">Threads</a></h2>
+<h2 id="threads">Threads</h2>
 <ol>
     <li>
         <h4>Compared with Processes</h4>
@@ -179,13 +179,11 @@ void handle_int(int signal)
     </li>
     <li>
         <h4>Types of Multithreading</h4>
-		  <p>
 		  <h5>Cooperative Multithreading</h5>
-		  In this model, the thread decides when to give up the CPU. In order for this method to work, threads should yield every now and again to allow other threads to continue processing. If a thread forgets to yield, then there is a bug in the program. This method is simple and avoids many data races,but it opens the door for many &rdquo;forget to yield&rdquo; bugs.
+		  <p>In this model, the thread decides when to give up the CPU. In order for this method to work, threads should yield every now and again to allow other threads to continue processing. If a thread forgets to yield, then there is a bug in the program. This method is simple and avoids many data races,but it opens the door for many &rdquo;forget to yield&rdquo; bugs.
 		  </p>
-		  <p>
 		  <h5>Preemptive Multithreading</h5>
-		  In this model, the scheduling of threads is handled by the operating system. Linux uses this model of multithreading. An example of this strategy would be running each thread 10 miliseconds at a time. With this method, there is no &rdquo;forget to yield&rdquo; bug, but the performance is less predictable, because a thread-switch can occur anywhere.
+		  <p>In this model, the scheduling of threads is handled by the operating system. Linux uses this model of multithreading. An example of this strategy would be running each thread 10 miliseconds at a time. With this method, there is no &rdquo;forget to yield&rdquo; bug, but the performance is less predictable, because a thread-switch can occur anywhere.
 		  </p>
     </li>
     <li>
@@ -194,7 +192,7 @@ void handle_int(int signal)
     </li>
 </ol>
 
-<h2><a name="scheduling">Scheduling</a></h2>
+<h2 id="scheduling">Scheduling</h2>
     <p><em>This is the first of a two-lecture series. See the next week&rsquo;s lecture notes for more discussion of scheduling.</em></p>
     <p>Machines have limited resources (CPU cores, memory, bus bandwidth, etc.). When dealing with CPU cores, the operating system needs a system to decide <strong>who goes first</strong>.</p>
 <h3>Policies</h3>
@@ -202,7 +200,7 @@ void handle_int(int signal)
     <p>Many of the metrics we use today are from automobile production. The graphic below illustrates some of the common metrics used if one factory receives an order for Model T&rsquo;s and Model A&rsquo;s.</p>
     <h4 class="m0 center">Automobile Manufacturing Metrics</h4>
     <p class="center"><embed src="scheduling-graphic.svg" type="image/svg+xml" /></p>
-    <p>Since car production scheduling and thread/process scheduling are so similar, many of the terms remain unchanged. Some other common time metrics are&hellip;
+    <p>Since car production scheduling and thread/process scheduling are so similar, many of the terms remain unchanged. Some other common time metrics are&hellip;</p>
     <ul>
         <li>Average wait time</li>
         <li>Average response time</li>
@@ -211,18 +209,16 @@ void handle_int(int signal)
         <li>Variance in response time</li>
         <li>And more</li>
     </ul>
-    </p>
-    <p>Some other general metrics are&hellip;
+    <p>Some other general metrics are&hellip;</p>
     <ul>
         <li><strong>Utilization</strong>: The percentage of time is the factory/CPU busy. (Google&rsquo;s data centers had an average utilization of 0.3 in 2011.)</li>
         <li><strong>Throughout</strong>: The rate of useful work getting done.</li>
     </ul>
-    </p>
     <p>Sometimes some metrics, especially resource/CPU utilization are kept lower than needed to save capacity for emergencies and non-characteristic system usage.</p>
 <h3>Mechanisms</h3>
     <p><strong>Mechanisms are the low-level ways of switching a running thread.</strong> This is analagous to an operating system&rsquo;s methods of switching between processes.</p>
     <p>Each process that has threads has a <strong>thread table</strong>, a table similar to the operating system&rsquo;s process table. Stored in the thread table are a thread&rsquo;s ID, its registers, and more.</p>
-    <p>To implement a context switch from thread <code>T</code> to thread <code>U</code>...
+    <p>To implement a context switch from thread <code>T</code> to thread <code>U</code>&hellip;</p>
     <ol>
         <li>Control must return to the operating system. Either the thread&rsquo;s time slice expires or the application directly calls an operating system interrupt:
             <pre><code>int 0x80</code></pre>
@@ -231,7 +227,6 @@ void handle_int(int signal)
         <li>By now, <code>T</code>&rsquo;s state is backed up in the thread table so <code>U</code>&rsquo;s state (registers and instruction pointer) should be copied from the thread table to the appropriate place on the stack.</li>
         <li>The operating system calls <code>reti</code> to return the CPU to user mode and continue execution of <code>U</code>.</li>
     </ol>
-    </p>
 
 <div id="top"><a href="#">&uarr; Top</a></div>
 
