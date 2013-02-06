@@ -115,6 +115,7 @@ inline void *malloc (size_t s)
 <p style="clear: both;">Suppose we have an ordinary <code>malloc()</code> call in our application, and then a <code>SIGINT</code> signal immediately arrives after the <code>char *r</code> declaration within <code>malloc()</code>. The signal handler will issue a call to <code>printf()</code>, which in turn also calls <code>malloc()</code>. This call will allocate space at the same <code>hp</code> value, because the previous call to <code>malloc()</code> did not increment the heap pointer yet. If the signal returns, the original call to <code>malloc()</code> no longer has a valid heap pointer.</p>
 
 <p>This means our signal handler must limit to asyncrhonous signal-safe functions. This even excludes our call to <code>exit()</code>, because it flushes all output buffers before exiting the process. To account for these possible issues, we must rewrite our original handler as follows, using the <code>write()</code> and <code>_exit()</code> system calls instead.</p>
+<p class="m1"><strong>Signal handler 2:</strong></p>
 <pre>
 #include &lt;signal.h&gt;
 
