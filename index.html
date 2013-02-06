@@ -127,7 +127,7 @@ void handle_int(int signal)
 
 <strong>Async-signal-safe functions</strong>
 <p>The following functions are <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html">defined by POSIX.1-2004</a> to be async-signal safe (as described <a href="#asyncsignalsafedesc">above</a>).</p>
-<p><pre class="long">_Exit()             fexecve()       poll()                sigqueue()
+<pre class="long">_Exit()             fexecve()       poll()                sigqueue()
 _exit()             fork()          posix_trace_event()   sigset()
 abort()             fstat()         pselect()             sigsuspend()
 accept()            fstatat()       raise()               sleep()
@@ -160,7 +160,7 @@ fchmodat()          mknodat()       sigismember()         utimes()
 fchown()            open()          signal()              wait()
 fchownat()          openat()        sigpause()            waitpid()
 fcntl()             pause()         sigpending()          write()
-fdatasync()         pipe()          sigprocmask()</pre></p>
+fdatasync()         pipe()          sigprocmask()</pre>
 
 <h3>Blocking signals</h3>
 <p>For some <strong>critical sections</strong> of your code (where receiving a signal can cause the program to crash), there is a built-in way to wait to receive signals until later. This is called blocking the signal.</p>
@@ -168,7 +168,7 @@ fdatasync()         pipe()          sigprocmask()</pre></p>
 <h4>Blocking/unblocking</h4>
 <p>To block/pause signals, the first argument of to <code>sigprocmask()</code> must be <code>SIG_BLOCK</code>. The second argument is a <code>sigset_t</code> type that describes what signals to block. (<a href="http://www.gnu.org/software/libc/manual/html_node/Signal-Sets.html">Read the manual page</a> about how to interact with <code>sigset_t</code>s.) And the final argument is the old set of blocked signals (i.e. the old <code>sigset_t</code>.)</p>
 <p>To unblock all signals, make the function call:</p>
-<pre><code>sigprocmask(SIG_SETMASK, &0, 0);</code></pre>
+<pre><code>sigprocmask(SIG_SETMASK, &amp;0, 0);</code></pre>
 
 <h4>Downsides</h4>
 <p>Since it's so easy to block and unblock signals, why doesn&rsquo;t every program use them? Take <code>malloc()</code> for instance; it has very critical code that manages the heap. If it is interrupted, the program may corrupt the heap and crash. But it doesn't block signals for a few reasons&hellip;</p>
