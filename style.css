@@ -52,6 +52,10 @@ pre {
     margin: 10px 30px 20px 30px;
     border-radius: 3px;
 }
+pre.long {
+    height: 200px;
+    overflow: auto;
+}
 #contents a:visited {
     color: blue;
 }
@@ -81,4 +85,11 @@ pre {
 #top a:hover
 {
     background: #444;
+}
+footer {
+    margin: 50px 0 0 0;
+}
+hr {
+    border: 0;
+    border-bottom: 1px #ccc solid;
 }

@@ -113,7 +113,7 @@ char *hl; // heap limit
 
 <p style="clear: both;">Suppose we have an ordinary <code>malloc()</code> call in our application, and then a <code>SIGINT</code> signal immediately arrives after the <code>char *r</code> declaration within <code>malloc()</code>. The signal handler will issue a call to <code>printf()</code>, which in turn also calls <code>malloc()</code>. This call will allocate space at the same <code>hp</code> value, because the previous call to <code>malloc()</code> did not increment the heap pointer yet. If the signal returns, the original call to <code>malloc()</code> no longer has a valid heap pointer.</p>
 
-<p id="asyncsignalsafedesc">This means our signal handler must limit to <strong>asynchronous signal-safe functions</strong> (async-signal safe). This even excludes our call to <code>exit()</code>, because it flushes all output buffers before exiting the process. To account for these possible issues, we must rewrite our original handler as follows, using the <code>write()</code> and <code>_exit()</code> system calls instead.</p>
+<p id="asyncsignalsafedesc">This means our signal handler must limit to <strong>asynchronous signal safe functions</strong> (async-signal-safe). This even excludes our call to <code>exit()</code>, because it flushes all output buffers before exiting the process. To account for these possible issues, we must rewrite our original handler as follows, using the <code>write()</code> and <code>_exit()</code> system calls instead.</p>
 <p class="m1"><strong>Signal handler 2:</strong></p>
 <pre><code>#include &lt;signal.h&gt;
 
@@ -127,7 +127,7 @@ void handle_int(int signal)
 
 <strong>Async-signal-safe functions</strong>
 <p>The following functions are <a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html">defined by POSIX.1-2004</a> to be async-signal safe (as described <a href="#asyncsignalsafedesc">above</a>).</p>
-<p><pre>_Exit()             fexecve()       poll()                sigqueue()
+<p><pre class="long">_Exit()             fexecve()       poll()                sigqueue()
 _exit()             fork()          posix_trace_event()   sigset()
 abort()             fstat()         pselect()             sigsuspend()
 accept()            fstatat()       raise()               sleep()
@@ -188,43 +188,43 @@ fdatasync()         pipe()          sigprocmask()</pre></p>
  </ul>
 <h3>Important System Calls</h3>
 <pre><code>int pthread_create (pthread_t *thread,          // Identifies the thread.
-            const pthread_attr_t *attr, // Options for making the thread.
-            void *(*fn)(void *),        // The thread executes this function...
-            void *arg);                 // ...given this argument.
+                    const pthread_attr_t *attr, // Options for making the thread.
+                    void *(*fn)(void *),        // The thread executes this function...
+                    void *arg);                 // ...given this argument.
 </code></pre>
-This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, <code>pthread_create</code> returns 0. If unsucessful, it returns an error number.
+<p>This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, <code>pthread_create</code> returns 0. If unsucessful, it returns an error number.</p>
 <pre><code>int ptrhead_join (pthread_t id,    // Identifies the thread.
-          void *status);   // Stores the return value of the thread.
+                  void *status);   // Stores the return value of the thread.
 </code></pre>
-This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, <code>pthread_join</code> returns 0 to the caller. If unsuccessful, it returns an error number.
+<p>This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, <code>pthread_join</code> returns 0 to the caller. If unsuccessful, it returns an error number.</p>
 <pre><code>int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;</code></pre>
 This function exits the calling thread with a status of &rsquo;status&rsquo;. It is similar to the <code>exit</code> function for processes.
 <h3>Things a Thread Can Do</h3>
-  <ul>
-      <li>Perform computation</li>
-		<li>
-		Busy wait: continually check for some condition. This consumes CPU cycles, but it continues as soon as the condition is met.
-		<pre><code>while (device_is_busy ()) continue; </code></pre>
-		</li>
-		<li>
-		Yield: transfer control to another thread, and return here later. This consumes less CPU cycles than the busy wait, but it increases the device latency
-		<pre><code>while (device_is_busy ()) pthread_yield ();</code></pre>
-		</li>
-		<li>Block: yield and tell OS "I am waiting for device x." OS will not wake thread until device is ready.</li>
-  </ul>
+<ol>
+  <li><strong>Perform computation</strong></li>
+	<li><p><strong>Busy wait:</strong> Continually check for some condition. This consumes CPU cycles, but it continues as soon as the condition is met.</p>
+	<pre><code>while (device_is_busy ()) continue; </code></pre>
+	</li>
+	<li>
+	<p><strong>Yield:</strong> Transfer control to another thread, and return here later. This consumes less CPU cycles than the busy wait, but it increases the device latency</p>
+	<pre><code>while (device_is_busy ()) pthread_yield ();</code></pre>
+	</li>
+	<li><strong>Block:</strong> Yield and tell OS "I am waiting for device x." OS will not wake thread until device is ready.</li>
+</ol>
 <h3>Types of Multithreading</h3>
-  <h5>Cooperative Multithreading</h5>
-  <p>In this model, the thread decides when to give up the CPU. In order for this method to work, threads should yield every now and again to allow other threads to continue processing. If a thread forgets to yield, then there is a bug in the program. This method is simple and avoids many data races,but it opens the door for many &rdquo;forget to yield&rdquo; bugs.
-  </p>
-  <h5>Preemptive Multithreading</h5>
-  <p>In this model, the scheduling of threads is handled by the operating system. Linux uses this model of multithreading. An example of this strategy would be running each thread 10 miliseconds at a time. With this method, there is no &rdquo;forget to yield&rdquo; bug, but the performance is less predictable, because a thread-switch can occur anywhere.
-  </p>
+<h4>Cooperative Multithreading</h4>
+<p>In this model, the thread decides when to give up the CPU. In order for this method to work, threads should yield every now and again to allow other threads to continue processing. If a thread forgets to yield, then there is a bug in the program. This method is simple and avoids many data races,but it opens the door for many &rdquo;forget to yield&rdquo; bugs.
+</p>
+<h4>Preemptive Multithreading</h4>
+<p>In this model, the scheduling of threads is handled by the operating system. Linux uses this model of multithreading. An example of this strategy would be running each thread 10 miliseconds at a time. With this method, there is no &rdquo;forget to yield&rdquo; bug, but the performance is less predictable, because a thread-switch can occur anywhere.
+</p>
 <h3>Multithreading and Signals</h3>
-  When a multithreaded process receives a signal, the kernel chooses a thread which isn't blocking the signal, and sends it there. You cannot control which thread will receive the signal, but you can block certain signals on all but one thread. This single thread will then receive all signals.
+<p>When a multithreaded process receives a signal, the kernel chooses a thread which isn't blocking the signal, and sends it there. You cannot control which thread will receive the signal, but you can block certain signals on all but one thread. This single thread will then receive all signals.</p>
 
 <h2 id="scheduling">Scheduling</h2>
-    <p><em>This is the first of a two-lecture series. See the next week&rsquo;s lecture notes for more discussion of scheduling.</em></p>
-    <p>Machines have limited resources (CPU cores, memory, bus bandwidth, etc.). When dealing with CPU cores, the operating system needs a system to decide <strong>who goes first</strong>.</p>
+<p><em>This is the first of a two-lecture series. See the next week&rsquo;s lecture notes for more discussion of scheduling.</em></p>
+<p>Machines have limited resources (CPU cores, memory, bus bandwidth, etc.). When dealing with CPU cores, the operating system needs a system to decide <strong>who goes first</strong>.</p>
+
 <h3>Policies</h3>
     <p><strong>Policies are the high-level algorithm used by a scheduler.</strong> Since schedulers run so often, good schedulers are fast and have desirable metrics.</p>
     <p>Many of the metrics we use today are from automobile production. The graphic below illustrates some of the common metrics used if one factory receives an order for Model T&rsquo;s and Model A&rsquo;s.</p>
@@ -242,9 +242,10 @@ This function exits the calling thread with a status of &rsquo;status&rsquo;. It
     <p>Some other general metrics are&hellip;</p>
     <ul>
         <li><strong>Utilization</strong>: The percentage of time is the factory/CPU busy. (Google&rsquo;s data centers had an average utilization of 0.3 in 2011.)</li>
-        <li><strong>Throughout</strong>: The rate of useful work getting done.</li>
+        <li><strong>Throughput</strong>: The rate of useful work getting done.</li>
     </ul>
     <p>Sometimes some metrics, especially resource/CPU utilization are kept lower than needed to save capacity for emergencies and non-characteristic system usage.</p>
+
 <h3>Mechanisms</h3>
     <p><strong>Mechanisms are the low-level ways of switching a running thread.</strong> This is analagous to an operating system&rsquo;s methods of switching between processes.</p>
     <p>Each process that has threads has a <strong>thread table</strong>, a table similar to the operating system&rsquo;s process table. Stored in the thread table are a thread&rsquo;s ID, its registers, and more.</p>
