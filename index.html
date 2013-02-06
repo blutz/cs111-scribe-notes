@@ -156,23 +156,44 @@ int pthread_create (pthread_t *thread,          // Identifies the thread.
                     void *(*fn)(void *),        // The thread executes this function...
                     void *arg);                 // ...given this argument.
         </pre>
-        This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, the function returns 0. If unsucessful, it returns an error numbewr.
+        This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, <code>pthread_create</code> returns 0. If unsucessful, it returns an error number.
         <pre>
 int ptrhead_join (pthread_t id,    // Identifies the thread.
                   void *status);   // Stores the return value of the thread.
         </pre>
-        This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, the function returns 0 to the caller. If unsuccessful, it returns an error number.
+        This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, <code>pthread_join</code> returns 0 to the caller. If unsuccessful, it returns an error number.
         <pre>int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;</pre>
-        This function exits the calling thread with a status of &rsquo;status&rsquo;. It is similar to the <code>exit</code> functino for processes.
+        This function exits the calling thread with a status of &rsquo;status&rsquo;. It is similar to the <code>exit</code> function for processes.
     </li>
     <li>
         <h4>Things a Thread Can Do</h4>
+		  <ul>
+		      <li>Perform computation</li>
+				<li>
+				Busy wait: continually check for some condition. This consumes CPU cycles, but it continues as soon as the condition is met.
+				<pre>while (device_is_busy ()) continue; </pre>
+				</li>
+				<li>
+				Yield: transfer control to another thread, and return here later. This consumes less CPU cycles than the busy wait, but it increases the device latency
+				<pre>while (device_is_busy ()) pthread_yield ();</pre>
+				</li>
+				<li>Block: yield and tell OS "I am waiting for device x." OS will not wake thread until device is ready.</li>
+		  </ul>
     </li>
     <li>
         <h4>Types of Multithreading</h4>
+		  <p>
+		  <h5>Cooperative Multithreading</h5>
+		  In this model, the thread decides when to give up the CPU. In order for this method to work, threads should yield every now and again to allow other threads to continue processing. If a thread forgets to yield, then there is a bug in the program. This method is simple and avoids many data races,but it opens the door for many &rdquo;forget to yield&rdquo; bugs.
+		  </p>
+		  <p>
+		  <h5>Preemptive Multithreading</h5>
+		  In this model, the scheduling of threads is handled by the operating system. Linux uses this model of multithreading. An example of this strategy would be running each thread 10 miliseconds at a time. With this method, there is no &rdquo;forget to yield&rdquo; bug, but the performance is less predictable, because a thread-switch can occur anywhere.
+		  </p>
     </li>
     <li>
-        <h4>Signals and Threading</h4>
+        <h4>Multithreading and Signals</h4>
+		  When a multithreaded process receives a signal, the kernel chooses a thread which isn't blocking the signal, and sends it there. You cannot control which thread will receive the signal, but you can block certain signals on all but one thread. This single thread will then receive all signals.
     </li>
 </ol>
 
