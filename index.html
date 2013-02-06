@@ -163,71 +163,64 @@ fcntl()             pause()         sigpending()          write()
 fdatasync()         pipe()          sigprocmask()</pre></p>
 
 <h3>Blocking signals</h3>
-<p><b style="color: red">TO DO</b></p>
+<p>For some <strong>critical sections</strong> of your code (where receiving a signal can cause the program to crash), there is a built-in way to wait to receive signals until later. This is called blocking the signal.</p>
+<p>Any code enclosed in the proper calls to <a href="http://www.kernel.org/doc/man-pages/online/pages/man2/sigprocmask.2.html"><code>sigprocmask()</code></a> will be executed without any of the asynchronous function calls that signals enable and can help ensure that a code segment is executed atomically.</p>
+<h4>Blocking/unblocking</h4>
+<p>To block/pause signals, the first argument of to <code>sigprocmask()</code> must be <code>SIG_BLOCK</code>. The second argument is a <code>sigset_t</code> type that describes what signals to block. (<a href="http://www.gnu.org/software/libc/manual/html_node/Signal-Sets.html">Read the manual page</a> about how to interact with <code>sigset_t</code>s.) And the final argument is the old set of blocked signals (i.e. the old <code>sigset_t</code>.)</p>
+<p>To unblock all signals, make the function call:</p>
+<pre><code>sigprocmask(SIG_SETMASK, &0, 0);</code></pre>
 
-<pre><code>sigprocmask()</code></pre>
-
-<p>Why doesn't <code>malloc()</code> block signals?</p>
+<h4>Downsides</h4>
+<p>Since it's so easy to block and unblock signals, why doesn&rsquo;t every program use them? Take <code>malloc()</code> for instance; it has very critical code that manages the heap. If it is interrupted, the program may corrupt the heap and crash. But it doesn't block signals for a few reasons&hellip;</p>
 <ul>
-    <li>Overhead of issuing a system call. <code>malloc()</code> needs to be fast.</li>
-    <li>Up to the programmer to insure</li>
+    <li>Every call to <code>sigprocmask()</code> is a system call. And because of how system calls work (with processor interrupts), they are too slow for a function that is used so often.</li>
+    <li>If there is a bug that causes the signal mask to never be unset, signals will be blocked through the rest of the program in a very hard-to-trace bug.</li>
 </ul>
+<p><strong>So what's the solution?</strong> Programs can ignore signals/handlers altogether to avoid these issues but programs should have some response to signals. Perhaps the most elegant solution is to have the signal handler set a global variable (<code>volatile bool sig_alert_set = true</code>) then exit and have the main function/loop check periodically (when safe) for received signals. (Note the <code>volatile</code> keyword is important to prevent the compiler from optimizing the variable away or using a cached version.)</p>
 
 <h2 id="threads">Threads</h2>
-<ol>
-    <li>
-        <h4>Compared with Processes</h4>
-        <ul>
-            <li>Like processes, threads share memory, file descripters, and more (i.e. uid, pid, etc.)</li>
-            <li>Unlike processes, threads have their own instruction pointer, registers, and stack</li>
-            <li>Pro: Threads help break down programs into smaller (and simpler) pieces</li>
-            <li>Con: Threads are prone to synchronization issues, both in performance and correctness</li>
-         </ul>
-    </li>
-    <li>
-        <h4>Important System Calls</h4>
-        <pre><code>int pthread_create (pthread_t *thread,          // Identifies the thread.
-                    const pthread_attr_t *attr, // Options for making the thread.
-                    void *(*fn)(void *),        // The thread executes this function...
-                    void *arg);                 // ...given this argument.
-        </code></pre>
-        This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, <code>pthread_create</code> returns 0. If unsucessful, it returns an error number.
-        <pre><code>int ptrhead_join (pthread_t id,    // Identifies the thread.
-                  void *status);   // Stores the return value of the thread.
-        </code></pre>
-        This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, <code>pthread_join</code> returns 0 to the caller. If unsuccessful, it returns an error number.
-        <pre><code>int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;</code></pre>
-        This function exits the calling thread with a status of &rsquo;status&rsquo;. It is similar to the <code>exit</code> function for processes.
-    </li>
-    <li>
-        <h4>Things a Thread Can Do</h4>
-		  <ul>
-		      <li>Perform computation</li>
-				<li>
-				Busy wait: continually check for some condition. This consumes CPU cycles, but it continues as soon as the condition is met.
-				<pre><code>while (device_is_busy ()) continue; </code></pre>
-				</li>
-				<li>
-				Yield: transfer control to another thread, and return here later. This consumes less CPU cycles than the busy wait, but it increases the device latency
-				<pre><code>while (device_is_busy ()) pthread_yield ();</code></pre>
-				</li>
-				<li>Block: yield and tell OS "I am waiting for device x." OS will not wake thread until device is ready.</li>
-		  </ul>
-    </li>
-    <li>
-        <h4>Types of Multithreading</h4>
-		  <h5>Cooperative Multithreading</h5>
-		  <p>In this model, the thread decides when to give up the CPU. In order for this method to work, threads should yield every now and again to allow other threads to continue processing. If a thread forgets to yield, then there is a bug in the program. This method is simple and avoids many data races,but it opens the door for many &rdquo;forget to yield&rdquo; bugs.
-		  </p>
-		  <h5>Preemptive Multithreading</h5>
-		  <p>In this model, the scheduling of threads is handled by the operating system. Linux uses this model of multithreading. An example of this strategy would be running each thread 10 miliseconds at a time. With this method, there is no &rdquo;forget to yield&rdquo; bug, but the performance is less predictable, because a thread-switch can occur anywhere.
-		  </p>
-    </li>
-    <li>
-        <h4>Multithreading and Signals</h4>
-		  When a multithreaded process receives a signal, the kernel chooses a thread which isn't blocking the signal, and sends it there. You cannot control which thread will receive the signal, but you can block certain signals on all but one thread. This single thread will then receive all signals.
-    </li>
-</ol>
+<h3>Compared with Processes</h3>
+<ul>
+    <li>Like processes, threads share memory, file descripters, and more (i.e. uid, pid, etc.)</li>
+    <li>Unlike processes, threads have their own instruction pointer, registers, and stack</li>
+    <li>Pro: Threads help break down programs into smaller (and simpler) pieces</li>
+    <li>Con: Threads are prone to synchronization issues, both in performance and correctness</li>
+ </ul>
+<h3>Important System Calls</h3>
+<pre><code>int pthread_create (pthread_t *thread,          // Identifies the thread.
+            const pthread_attr_t *attr, // Options for making the thread.
+            void *(*fn)(void *),        // The thread executes this function...
+            void *arg);                 // ...given this argument.
+</code></pre>
+This function creates a new thread. It is similar to the <code>fork</code> function for processes but the new thread begins in a different fuction. If successful, <code>pthread_create</code> returns 0. If unsucessful, it returns an error number.
+<pre><code>int ptrhead_join (pthread_t id,    // Identifies the thread.
+          void *status);   // Stores the return value of the thread.
+</code></pre>
+This function joins the calling thread with the thread given in the argument. It&rsquo;s similar to the <code>wait</code> function for processes. If the thread is still running, then the caller waits for the thread to terminate. If successful, <code>pthread_join</code> returns 0 to the caller. If unsuccessful, it returns an error number.
+<pre><code>int pthread_exit (void *status);   // Exits the thread returning &rsquo;status&rsquo;</code></pre>
+This function exits the calling thread with a status of &rsquo;status&rsquo;. It is similar to the <code>exit</code> function for processes.
+<h3>Things a Thread Can Do</h3>
+  <ul>
+      <li>Perform computation</li>
+		<li>
+		Busy wait: continually check for some condition. This consumes CPU cycles, but it continues as soon as the condition is met.
+		<pre><code>while (device_is_busy ()) continue; </code></pre>
+		</li>
+		<li>
+		Yield: transfer control to another thread, and return here later. This consumes less CPU cycles than the busy wait, but it increases the device latency
+		<pre><code>while (device_is_busy ()) pthread_yield ();</code></pre>
+		</li>
+		<li>Block: yield and tell OS "I am waiting for device x." OS will not wake thread until device is ready.</li>
+  </ul>
+<h3>Types of Multithreading</h3>
+  <h5>Cooperative Multithreading</h5>
+  <p>In this model, the thread decides when to give up the CPU. In order for this method to work, threads should yield every now and again to allow other threads to continue processing. If a thread forgets to yield, then there is a bug in the program. This method is simple and avoids many data races,but it opens the door for many &rdquo;forget to yield&rdquo; bugs.
+  </p>
+  <h5>Preemptive Multithreading</h5>
+  <p>In this model, the scheduling of threads is handled by the operating system. Linux uses this model of multithreading. An example of this strategy would be running each thread 10 miliseconds at a time. With this method, there is no &rdquo;forget to yield&rdquo; bug, but the performance is less predictable, because a thread-switch can occur anywhere.
+  </p>
+<h3>Multithreading and Signals</h3>
+  When a multithreaded process receives a signal, the kernel chooses a thread which isn't blocking the signal, and sends it there. You cannot control which thread will receive the signal, but you can block certain signals on all but one thread. This single thread will then receive all signals.
 
 <h2 id="scheduling">Scheduling</h2>
     <p><em>This is the first of a two-lecture series. See the next week&rsquo;s lecture notes for more discussion of scheduling.</em></p>
